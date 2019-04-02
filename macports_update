@@ -1,22 +1,37 @@
 #!/usr/bin/env ruby
-
 require 'optparse'
 
 options = {}
 OptionParser.new do |opt|
   opt.on("-u", "--update-only", "Only updates MacPorts, doesn't clean anything") { options[:update_only] = true }
-  opt.on("-c", "--cleanup", "Cleans old program versions and such") { |o| options[:cleanup] = true }
+  opt.on("-c", "--cleanup", "Cleans old program versions and such") { options[:cleanup] = true }
 end.parse!
 
+$update_commands  = ["sudo port selfupdate", "sudo port upgrade outdated"]
+$cleanup_commands = ["sudo port uninstall leaves", "sudo port -N reclaim"]
+
+# Loop thru one of the above arrays, running its commands and printing a message
+# for each one
+def run(cmds_array)
+  cmds_array.each do |cmd|
+    puts "Running '#{cmd}':"
+
+    # Run the command and save its exit status
+    exit_status = system cmd
+
+    # If the command failed, exit the whole program, unless the command is
+    # `sudo port uninstall leaves' because that command should be ignored.
+    if exit_status != true && cmd != $cleanup_commands[0]
+      exit 1
+    end
+  end
+end
+
 if options[:update_only]
-  system "sudo port selfupdate"
-  system "sudo port upgrade outdated"
+  run $update_commands
 elsif options[:cleanup]
-  system "sudo port uninstall leaves"
-  system "sudo port -N reclaim"
+  run $cleanup_commands
 else
-  system "sudo port selfupdate"
-  system "sudo port upgrade outdated"
-  system "sudo port uninstall leaves"
-  system "sudo port -N reclaim"
+  run $update_commands
+  run $cleanup_commands
 end
